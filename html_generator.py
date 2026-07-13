@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 import pandas as pd
+from tqdm.auto import tqdm
 
 from sec_http import sec_get_json
 
@@ -169,23 +170,23 @@ def export_company_cik_year_html(cik_ls,
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_worker, c): c for c in todo}
-        for fut in as_completed(futures):
-            cik = futures[fut]
-            with lock:
-                completed += 1
-                try:
-                    _, df = fut.result()
-                    done_dfs.append(df)
-                except Exception as e:
-                    errors.append({"CIK": cik, "error": str(e)})
-                    print(f"  Failed CIK={cik}: {e}")
+        with tqdm(total=len(todo), desc="CIKs", unit="company") as pbar:
+            for fut in as_completed(futures):
+                cik = futures[fut]
+                with lock:
+                    completed += 1
+                    try:
+                        _, df = fut.result()
+                        done_dfs.append(df)
+                    except Exception as e:
+                        errors.append({"CIK": cik, "error": str(e)})
+                        tqdm.write(f"  Failed CIK={cik}: {e}")
 
-                if completed % 25 == 0 or completed == len(todo):
-                    print(f"[{completed}/{len(todo)}] processed this run")
+                    pbar.update(1)
 
-                if completed % checkpoint_every == 0:
-                    _save(out_xlsx, done_dfs, errors)
-                    print(f"Checkpoint saved: {out_xlsx}")
+                    if completed % checkpoint_every == 0:
+                        _save(out_xlsx, done_dfs, errors)
+                        tqdm.write(f"Checkpoint saved: {out_xlsx}")
 
     df_all = _save(out_xlsx, done_dfs, errors)
     print(f"Saved: {out_xlsx} ({len(df_all)} rows)")

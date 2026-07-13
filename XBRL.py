@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 from bs4 import BeautifulSoup
+from tqdm.auto import tqdm
 
 from sec_http import sec_get_text
 
@@ -419,18 +420,17 @@ def run_rpo_pipeline(df: pd.DataFrame = None,
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = [pool.submit(_process_one, filing) for filing in todo]
-        for fut in as_completed(futures):
-            row = fut.result()
-            with lock:
-                rows.append(row)
-                completed += 1
+        with tqdm(total=total, desc="Filings", unit="filing") as pbar:
+            for fut in as_completed(futures):
+                row = fut.result()
+                with lock:
+                    rows.append(row)
+                    completed += 1
+                    pbar.update(1)
 
-                if completed % 25 == 0 or completed == total:
-                    print(f"[{completed}/{total}] processed this run")
-
-                if completed % checkpoint_every == 0:
-                    _save(output_prefix, rows)
-                    print(f"Checkpoint saved: {output_prefix}.xlsx/.csv")
+                    if completed % checkpoint_every == 0:
+                        _save(output_prefix, rows)
+                        tqdm.write(f"Checkpoint saved: {output_prefix}.xlsx/.csv")
 
     df_out = _save(output_prefix, rows)
     print(f"Done. Total rows: {len(df_out)}")
