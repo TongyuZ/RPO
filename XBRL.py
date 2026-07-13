@@ -358,6 +358,8 @@ def _process_one(filing: dict) -> dict:
     row["CIK"] = filing.get("CIK")
     row["Company"] = filing.get("Company")
     row["FiscalYear"] = filing.get("fiscalYear")
+    if "gvkey" in filing:
+        row["gvkey"] = filing.get("gvkey")
     return row
 
 
