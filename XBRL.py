@@ -365,6 +365,9 @@ def _process_one(filing: dict) -> dict:
 
 def _save(output_prefix: str, rows: list) -> pd.DataFrame:
     df_out = pd.DataFrame(rows)
+    sort_cols = [c for c in ["CIK", "FiscalYear"] if c in df_out.columns]
+    if sort_cols:
+        df_out = df_out.sort_values(sort_cols, na_position="last").reset_index(drop=True)
     df_out.to_excel(f"{output_prefix}.xlsx", index=False)
     df_out.to_csv(f"{output_prefix}.csv", index=False, encoding="utf-8-sig")
     return df_out
